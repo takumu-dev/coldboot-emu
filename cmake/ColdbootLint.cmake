@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The checks that build nothing: formatting, documentation and SPDX lines. Each target exists only
+# where its tool is found, so the lint preset fails at once, naming the target, on a machine that
+# lacks one.
+#
+#   check-format  fails if any source differs from what clang-format would make of it
+#   format        reformats every source in place
+#   docs          runs Doxygen over every header, failing on any warning
+#   check-spdx    fails if any source or build file doesn't begin with its SPDX line, as
+#                 cmake/check_spdx.cmake describes
+
+include_guard(GLOBAL)
+
+coldboot_find_llvm_tool(COLDBOOT_CLANG_FORMAT clang-format)
+if(COLDBOOT_CLANG_FORMAT)
+    file(GLOB_RECURSE sources CONFIGURE_DEPENDS
+        "${PROJECT_SOURCE_DIR}/src/*.cpp"
+        "${PROJECT_SOURCE_DIR}/src/*.hpp"
+        "${PROJECT_SOURCE_DIR}/tests/*.cpp"
+        "${PROJECT_SOURCE_DIR}/tests/*.hpp"
+    )
+    add_custom_target(check-format
+        COMMAND "${COLDBOOT_CLANG_FORMAT}" --dry-run --Werror ${sources}
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        COMMENT "Checking the formatting"
+        VERBATIM
+    )
+    add_custom_target(format
+        COMMAND "${COLDBOOT_CLANG_FORMAT}" -i ${sources}
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        COMMENT "Formatting the sources"
+        VERBATIM
+    )
+endif()
+
+find_package(Doxygen QUIET)
+if(TARGET Doxygen::doxygen)
+    add_custom_target(docs
+        COMMAND Doxygen::doxygen Doxyfile
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        COMMENT "Checking the documentation of every header"
+        VERBATIM
+    )
+endif()
+
+find_package(Git QUIET)
+if(Git_FOUND)
+    add_custom_target(check-spdx
+        COMMAND "${CMAKE_COMMAND}"
+            "-DGIT=${GIT_EXECUTABLE}"
+            "-DROOT=${PROJECT_SOURCE_DIR}"
+            -P "${PROJECT_SOURCE_DIR}/cmake/check_spdx.cmake"
+        COMMENT "Checking every source and build file's SPDX line"
+        VERBATIM
+    )
+endif()

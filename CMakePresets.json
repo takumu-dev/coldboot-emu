@@ -1,0 +1,143 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Kitware/CMake/master/Help/manual/presets/schema.json",
+  "version": 12,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 2
+  },
+  "configurePresets": [
+    {
+      "name": "desktop",
+      "hidden": true,
+      "$comment": "The desktop tree: the host's Clang, building with Ninja, with the tests' dependencies from vcpkg, found through VCPKG_ROOT.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": true,
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "VCPKG_MANIFEST_FEATURES": "tests",
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "desktop-debug",
+      "inherits": "desktop",
+      "displayName": "Desktop, debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-D_GLIBCXX_ASSERTIONS"
+      }
+    },
+    {
+      "name": "desktop-release",
+      "inherits": "desktop",
+      "displayName": "Desktop, release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "desktop-sanitize",
+      "inherits": "desktop",
+      "displayName": "Desktop, AddressSanitizer and UndefinedBehaviorSanitizer",
+      "description": "Optimised at -O1, with debug assertions on. Our own code is instrumented; vcpkg's ports aren't, which AddressSanitizer on Linux doesn't need.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-O1 -D_GLIBCXX_ASSERTIONS -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "tidy",
+      "inherits": "desktop-debug",
+      "displayName": "clang-tidy",
+      "description": "Builds the desktop tree with clang-tidy run on every source.",
+      "cacheVariables": {
+        "COLDBOOT_CLANG_TIDY": true
+      }
+    },
+    {
+      "name": "lint",
+      "inherits": "desktop",
+      "displayName": "Formatting, documentation and SPDX lines",
+      "description": "Checks the formatting with clang-format, the documentation with Doxygen and every file's SPDX line, building nothing else.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "COLDBOOT_BUILD_TESTS": false,
+        "VCPKG_MANIFEST_FEATURES": ""
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "desktop-debug", "configurePreset": "desktop-debug" },
+    { "name": "desktop-release", "configurePreset": "desktop-release" },
+    { "name": "desktop-sanitize", "configurePreset": "desktop-sanitize" },
+    { "name": "tidy", "configurePreset": "tidy" },
+    { "name": "lint", "configurePreset": "lint", "targets": ["check-format", "docs", "check-spdx"] }
+  ],
+  "testPresets": [
+    {
+      "name": "test",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true,
+        "outputJUnitFile": "junit.xml"
+      },
+      "execution": {
+        "jobs": "",
+        "noTestsAction": "error"
+      }
+    },
+    { "name": "desktop-debug", "inherits": "test", "configurePreset": "desktop-debug" },
+    { "name": "desktop-release", "inherits": "test", "configurePreset": "desktop-release" },
+    { "name": "desktop-sanitize", "inherits": "test", "configurePreset": "desktop-sanitize" }
+  ],
+  "workflowPresets": [
+    {
+      "name": "desktop-debug",
+      "steps": [
+        { "type": "configure", "name": "desktop-debug" },
+        { "type": "build", "name": "desktop-debug" },
+        { "type": "test", "name": "desktop-debug" }
+      ]
+    },
+    {
+      "name": "desktop-release",
+      "steps": [
+        { "type": "configure", "name": "desktop-release" },
+        { "type": "build", "name": "desktop-release" },
+        { "type": "test", "name": "desktop-release" }
+      ]
+    },
+    {
+      "name": "desktop-sanitize",
+      "steps": [
+        { "type": "configure", "name": "desktop-sanitize" },
+        { "type": "build", "name": "desktop-sanitize" },
+        { "type": "test", "name": "desktop-sanitize" }
+      ]
+    },
+    {
+      "name": "tidy",
+      "steps": [
+        { "type": "configure", "name": "tidy" },
+        { "type": "build", "name": "tidy" }
+      ]
+    },
+    {
+      "name": "lint",
+      "steps": [
+        { "type": "configure", "name": "lint" },
+        { "type": "build", "name": "lint" }
+      ]
+    }
+  ]
+}

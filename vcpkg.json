@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "coldboot-emu",
+  "description": "A PS1 emulator that is the only software on an x86-64 PC",
+  "homepage": "https://github.com/takumu-dev/coldboot-emu",
+  "license": "GPL-3.0-or-later",
+  "builtin-baseline": "bf19794383e8fb95eba5aa553235bc8ec2271688",
+  "features": {
+    "tests": {
+      "description": "What the tests need, and nothing a frontend ships",
+      "dependencies": [
+        "catch2"
+      ]
+    }
+  }
+}

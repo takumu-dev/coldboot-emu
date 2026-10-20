@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The reference for every header: the core library's and the tests' shared support. Run Doxygen
+# from the repository's root, or build the `docs` target. Every declaration must be documented,
+# private members included, and any warning fails the run.
+
+PROJECT_NAME           = coldboot-emu
+PROJECT_BRIEF          = "A PS1 emulator that is the only software on an x86-64 PC"
+
+INPUT                  = src \
+                         tests/support
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp
+# Catch2's printing of the core's values specialises a template in Catch2's namespace, which
+# Doxygen can't see.
+EXCLUDE                = tests/support/core_printing.hpp
+STRIP_FROM_PATH        = src/core/include \
+                         tests
+STRIP_FROM_INC_PATH    = src/core/include \
+                         tests
+
+EXTRACT_PRIVATE        = YES
+BUILTIN_STL_SUPPORT    = YES
+
+JAVADOC_AUTOBRIEF      = YES
+MARKDOWN_SUPPORT       = YES
+
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_IF_INCOMPLETE_DOC = YES
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
+QUIET                  = YES
+
+OUTPUT_DIRECTORY       = build/docs
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+
+# No diagrams, so the check needs no Graphviz.
+HAVE_DOT               = NO
