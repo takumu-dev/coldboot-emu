@@ -15,9 +15,10 @@ namespace coldboot::detail {
 
 namespace {
 
-// The fields of an instruction word, as psx-spx's "CPU Opcode Encoding" lays them out.
+// The fields of an instruction word, named and laid out as psx-spx's "CPU Opcode Encoding" and the
+// R3000 manual give them.
 
-std::uint32_t opcode(std::uint32_t word) { return word >> 26; }
+std::uint32_t op(std::uint32_t word) { return word >> 26; }
 
 std::uint32_t rs(std::uint32_t word) { return word >> 21 & 0x1F; }
 
@@ -25,15 +26,29 @@ std::uint32_t rt(std::uint32_t word) { return word >> 16 & 0x1F; }
 
 std::uint32_t rd(std::uint32_t word) { return word >> 11 & 0x1F; }
 
-std::uint32_t shift_amount(std::uint32_t word) { return word >> 6 & 0x1F; }
+std::uint32_t shamt(std::uint32_t word) { return word >> 6 & 0x1F; }
 
-std::uint32_t function(std::uint32_t word) { return word & 0x3F; }
+std::uint32_t funct(std::uint32_t word) { return word & 0x3F; }
 
 std::uint32_t immediate(std::uint32_t word) { return word & 0xFFFF; }
 
 std::uint32_t sign_extended_immediate(std::uint32_t word) {
     return static_cast<std::uint32_t>(static_cast<std::int16_t>(word & 0xFFFF));
 }
+
+// The values of op that the CPU decodes, from psx-spx's "CPU Opcode Encoding".
+namespace opcode {
+constexpr std::uint32_t special = 0x00;
+constexpr std::uint32_t addiu = 0x09;
+constexpr std::uint32_t ori = 0x0D;
+constexpr std::uint32_t lui = 0x0F;
+constexpr std::uint32_t sw = 0x2B;
+} // namespace opcode
+
+// The values of funct, under SPECIAL, that the CPU decodes.
+namespace function {
+constexpr std::uint32_t sll = 0x00;
+} // namespace function
 
 // Writes a general-purpose register. r0 is wired to 0, so a write to it is dropped.
 void write_gpr(std::array<std::uint32_t, 32>& gpr, std::uint32_t index, std::uint32_t value) {
@@ -42,12 +57,14 @@ void write_gpr(std::array<std::uint32_t, 32>& gpr, std::uint32_t index, std::uin
     }
 }
 
-// The report of a word access, by the instruction at `pc`, that met the absent `part`.
+// The report of a word access to `address`, by the instruction at `pc`, that met the absent
+// `part`. It gives the address in the physical address space, so that a part reached through any
+// segment is reported at the same address.
 StopReport stop_report(AbsentPart part, std::uint32_t address, AccessDirection direction,
                        std::uint32_t pc, std::uint64_t now) {
     return {
         .part = part,
-        .address = address,
+        .address = physical_address(address),
         .direction = direction,
         .width = AccessWidth::word,
         .pc = pc,
@@ -64,29 +81,19 @@ std::optional<StopReport> Cpu::step(Bus& bus, std::uint64_t now) {
     }
     const std::uint32_t word = *fetched;
 
-    // Instructions are named by their mnemonics, and decoded by psx-spx's "CPU Opcode Encoding".
-    switch (opcode(word)) {
-    case 0x00:
-        // SPECIAL, of which only SLL is decoded.
-        if (function(word) != 0x00) {
-            return stop_report(AbsentPart::instruction, pc_, AccessDirection::read, pc_, now);
-        }
-        write_gpr(gpr_, rd(word), gpr_[rt(word)] << shift_amount(word));
-        break;
-    case 0x09:
+    switch (op(word)) {
+    case opcode::addiu:
         // ADDIU wraps, and has no overflow trap.
         write_gpr(gpr_, rt(word), gpr_[rs(word)] + sign_extended_immediate(word));
         break;
-    case 0x0D:
-        // ORI
+    case opcode::ori:
         write_gpr(gpr_, rt(word), gpr_[rs(word)] | immediate(word));
         break;
-    case 0x0F:
-        // LUI
+    case opcode::lui:
         write_gpr(gpr_, rt(word), immediate(word) << 16);
         break;
-    case 0x2B: {
-        // SW, whose address wraps.
+    case opcode::sw: {
+        // The address wraps, as the R3000A's does.
         const std::uint32_t address = gpr_[rs(word)] + sign_extended_immediate(word);
         if (address % 4 != 0) {
             return stop_report(AbsentPart::address_error, address, AccessDirection::write, pc_,
@@ -97,6 +104,13 @@ std::optional<StopReport> Cpu::step(Bus& bus, std::uint64_t now) {
         }
         break;
     }
+    case opcode::special:
+        if (funct(word) == function::sll) {
+            write_gpr(gpr_, rd(word), gpr_[rt(word)] << shamt(word));
+            break;
+        }
+        // Any other function of SPECIAL is an instruction the CPU doesn't decode.
+        [[fallthrough]];
     default:
         return stop_report(AbsentPart::instruction, pc_, AccessDirection::read, pc_, now);
     }

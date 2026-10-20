@@ -6,6 +6,7 @@
 #include "rom_builder.hpp"
 
 #include <memory>
+#include <vector>
 
 namespace coldboot::test {
 
@@ -16,6 +17,12 @@ std::unique_ptr<Rom> stop_rom() {
         addiu(reg::t1, reg::zero, 0x41),
         sw(reg::t1, 0x20, reg::t0),
     });
+}
+
+std::vector<TestRom> test_roms() {
+    std::vector<TestRom> roms;
+    roms.push_back({.file_name = "stop.bin", .rom = stop_rom()});
+    return roms;
 }
 
 } // namespace coldboot::test

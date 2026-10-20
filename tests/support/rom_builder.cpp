@@ -4,10 +4,8 @@
 
 #include <coldboot/core/assertion.hpp>
 #include <coldboot/core/core_config.hpp>
+#include <coldboot/core/detail/guest_memory.hpp>
 
-#include <algorithm>
-#include <array>
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -19,11 +17,10 @@ namespace coldboot::test {
 std::unique_ptr<Rom> build_rom(std::initializer_list<std::uint32_t> words) {
     COLDBOOT_ASSERT(words.size() <= bios_size / 4, "the words fit the ROM");
     auto rom = std::make_unique<Rom>();
-    std::span<std::byte> free{*rom};
+    std::size_t offset = 0;
     for (const std::uint32_t word : words) {
-        // The PS1 is little-endian, like every host the tests run on.
-        std::ranges::copy(std::bit_cast<std::array<std::byte, 4>>(word), free.begin());
-        free = free.subspan(4);
+        detail::store(std::span{*rom}, offset, word);
+        offset += 4;
     }
     return rom;
 }

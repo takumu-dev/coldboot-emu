@@ -42,7 +42,7 @@ template <std::size_t Capacity> class TextWriter {
         std::array<char, 20> digits{};
         std::size_t first = digits.size();
         while (first == digits.size() || value != 0) {
-            digits[--first] = static_cast<char>('0' + (value % 10));
+            digits[--first] = numerals[value % 10];
             value /= 10;
         }
         write(std::span{digits}.subspan(first));
@@ -57,8 +57,6 @@ template <std::size_t Capacity> class TextWriter {
         COLDBOOT_ASSERT(digits >= 1 && digits <= 8, "a hexadecimal number has 1 to 8 digits");
         COLDBOOT_ASSERT(digits == 8 || value >> (4 * digits) == 0,
                         "the number fits its hexadecimal digits");
-        constexpr std::array<char, 16> numerals{'0', '1', '2', '3', '4', '5', '6', '7',
-                                                '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
         std::array<char, 8> text{};
         for (std::size_t i = 0; i < digits; ++i) {
             text[i] = numerals[(value >> (4 * (digits - 1 - i))) & 0xF];
@@ -72,6 +70,10 @@ template <std::size_t Capacity> class TextWriter {
     [[nodiscard]] std::span<const char> text() const { return std::span{buffer_}.first(size_); }
 
   private:
+    /// The digits of every base written, by value.
+    static constexpr std::array<char, 16> numerals{'0', '1', '2', '3', '4', '5', '6', '7',
+                                                   '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
     /// The characters written, in its first `size_` elements.
     std::array<char, Capacity> buffer_{};
 

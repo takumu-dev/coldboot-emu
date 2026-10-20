@@ -35,7 +35,9 @@ struct StopReport {
     /// What was touched.
     AbsentPart part{};
 
-    /// The address the guest gave, before any mirroring.
+    /// The address touched, in the physical address space, so that a part reached through any
+    /// segment is reported at the same address. KUSEG's first 512 MiB, KSEG0 and KSEG1 mirror that
+    /// space; an address anywhere else is given as it is.
     std::uint32_t address{};
 
     /// Whether the access read or wrote.

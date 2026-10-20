@@ -34,13 +34,15 @@ function(coldboot_add_tests component)
 endfunction()
 
 # Adds a test that a precondition fires. A failed check ends the process, so each such test is a
-# program of its own, sharing support/precondition_main.cpp, which CTest expects to fail. The source
-# defines break_precondition() from support/precondition_test.hpp.
+# program of its own, sharing support/precondition_main.cpp. The source defines
+# coldboot::test::break_precondition() from support/precondition_test.hpp. The test passes only on
+# the report of the precondition's own check, so that another check firing first fails it.
 #
 #   SOURCE     the program's one source file
+#   MESSAGE    what the precondition says must hold, as its check's message
 #   LIBRARIES  what the program links besides the core
 function(coldboot_add_precondition_test component name)
-    cmake_parse_arguments(PARSE_ARGV 2 arg "" "SOURCE" "LIBRARIES")
+    cmake_parse_arguments(PARSE_ARGV 2 arg "" "SOURCE;MESSAGE" "LIBRARIES")
     cmake_path(GET arg_SOURCE STEM stem)
     set(target coldboot_${component}_${stem})
     add_executable(${target} ${arg_SOURCE})
@@ -48,7 +50,11 @@ function(coldboot_add_precondition_test component name)
     coldboot_target_test_conventions(${target})
     set(test_name "${component}: ${name}")
     add_test(NAME "${test_name}" COMMAND ${target})
-    set_tests_properties("${test_name}" PROPERTIES LABELS unit WILL_FAIL TRUE)
+    string(REGEX REPLACE "([][+.*()^$?|\\])" "\\\\\\1" message "${arg_MESSAGE}")
+    set_tests_properties("${test_name}" PROPERTIES
+        LABELS unit
+        PASS_REGULAR_EXPRESSION ": assertion failed: ${message} \\("
+    )
 endfunction()
 
 add_subdirectory(cmake)

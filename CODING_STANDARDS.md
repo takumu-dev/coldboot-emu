@@ -31,7 +31,8 @@ departs from them, it says so.
   before the UEFI frontend's entry point.
 - coldboot-emu is licensed GPL-3.0-or-later. Every source and build file begins with
   `// SPDX-License-Identifier: GPL-3.0-or-later`, or the same after `# ` in CMake files and tool
-  configurations, with no copyright line. The `check-spdx` target checks it.
+  configurations, with no copyright line. The `check-spdx` target checks it. JSON files, such as
+  the presets and the vcpkg manifest, can't hold a comment, and are left out.
 - Versions follow semantic versioning, and before 1.0 each milestone is a minor release. The version
   lives only in CMake's `project()`.
 
@@ -55,6 +56,8 @@ departs from them, it says so.
   |---|---|---|
   | `coldboot::core` | the core and its components (the CPU and the bus), the stop report and its line, the text writer, and the assertions | nothing |
   | a frontend | its platform-free part and its platform files | `coldboot::core`, and its platform's libraries |
+  | `coldboot_test_support` | what the tests share, in `tests/support/` | `coldboot::core`, Catch2 |
+  | `coldboot_aborting_assertion`, `coldboot_precondition_main` | the two `assertion_failed` of the test programs | `coldboot_test_support` |
 
 - The core is used from one thread at a time.
 
@@ -113,7 +116,8 @@ departs from them, it says so.
   | device-access log | trace, I/O log, access trace |
 
   A duration may still be counted in cycles, but the clock is emulated time, so the core holds
-  `now_`, never `cycles_`.
+  `now_`, never `cycles_`. A ROM is an image the core runs as its BIOS, never the guest: the BIOS
+  ROM is the memory the core copies it into, and a test ROM is one built for a test.
 
 ## Files and formatting
 
@@ -134,7 +138,8 @@ departs from them, it says so.
 - Guest values are fixed-width unsigned (`std::uint32_t`, `std::uint16_t`, `std::uint8_t`), and
   guest arithmetic is unsigned, so it wraps as the R3000A does. A signed view is
   `static_cast<std::int32_t>`, and a guest value is truncated with a plain `static_cast`, as the
-  hardware truncates it.
+  hardware truncates it. The core's own values are narrowed only through a checked `narrow`, which
+  comes with the first that needs it.
 - A register that reads back what was written is held as that word, its fields read and written
   through named masks. No C++ bit-fields and no unions. A register whose read is computed builds its
   word in its read function.
@@ -238,7 +243,9 @@ departs from them, it says so.
   that keeps the behaviour. There are no test-only accessors, `friend` tests or
   `#define private public`. Its name is a sentence saying what holds, such as "a stop is final:
   every later run returns the same report at once".
-- `tests/` mirrors `src/`, one `<name>_tests.cpp` per file. Beside it, `tests/cmake/` tests the
+- `tests/` mirrors `src/`, with a file's tests in `<name>_tests.cpp`. A component is tested
+  through the core's interface, and through its own only where the core's is too blunt, so the
+  CPU and the bus have no test files of their own yet. Beside them, `tests/cmake/` tests the
   build's own checks, `tests/roms/` writes the test ROMs to files, and `tests/support/` holds what
   the tests share: the `constexpr` R3000A encoder, the ROM builder and the test ROMs, a
   `Diagnostics` that records what it receives, and Catch2's printing of the core's values.
@@ -255,9 +262,10 @@ departs from them, it says so.
 - Each kind of test has a helper in `tests/CMakeLists.txt`:
   - `coldboot_add_tests` adds a component's Catch2 test cases, each registered with CTest. A test
     case's name must not begin with `-`, which Catch2 would read as one of its options.
-  - `coldboot_add_precondition_test` adds a program that breaks one precondition, which CTest
-    expects to fail. It fails by exiting rather than aborting, since CTest counts an abort as a
-    crash even then. These are used sparingly.
+  - `coldboot_add_precondition_test` adds a program that breaks one precondition. It passes only
+    on the report of that precondition's check, so that another check firing first fails it, and
+    the program exits rather than aborting, since CTest counts an abort as a crash. These are used
+    sparingly.
 - A test file whose checks hold one of the core's values includes `core_printing.hpp` from
   `tests/support/`. One that didn't would print the value as `{?}`, and its copy of Catch2's
   printing could replace the right one in every other file of the program.

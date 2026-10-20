@@ -8,9 +8,9 @@
 
 #include "rom_builder.hpp"
 
-#include <array>
 #include <memory>
 #include <string_view>
+#include <vector>
 
 namespace coldboot::test {
 
@@ -26,13 +26,13 @@ struct TestRom {
     /// The file's name, without its directory.
     std::string_view file_name;
 
-    /// Builds the ROM.
-    std::unique_ptr<Rom> (*build)();
+    /// The ROM.
+    std::unique_ptr<Rom> rom;
 };
 
-/// Every ROM the `test-roms` target writes.
-inline constexpr std::array test_roms{
-    TestRom{.file_name = "stop.bin", .build = stop_rom},
-};
+/// Builds every ROM the `test-roms` target writes.
+///
+/// \return The ROMs, each with its file's name.
+[[nodiscard]] std::vector<TestRom> test_roms();
 
 } // namespace coldboot::test

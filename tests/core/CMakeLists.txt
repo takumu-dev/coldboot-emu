@@ -11,7 +11,7 @@ coldboot_add_tests(core
 
 coldboot_add_precondition_test(core "a run to a time no later than now fires its precondition"
     SOURCE programs/run_until_now.cpp
-    LIBRARIES coldboot::core
+    MESSAGE "a run ends later than it starts"
 )
 
 # A source that includes a hosted header, compiled with the core library's own options. Building it

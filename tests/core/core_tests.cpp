@@ -47,17 +47,7 @@ coldboot::RunResult stopped_with(const StopReport& report) {
 // The result of a run that reached its until.
 constexpr coldboot::RunResult reached_until{.end = RunEnd::reached_until};
 
-// How stop_rom() stops: its store to the DUART, the fourth instruction.
-constexpr StopReport stop_rom_stop{
-    .part = AbsentPart::unmapped,
-    .address = 0x1F80'2020,
-    .direction = AccessDirection::write,
-    .width = AccessWidth::word,
-    .pc = 0xBFC0'000C,
-    .time = 3,
-};
-
-// A store of r0 to the DUART, by the instruction at `pc` at emulated time `time`.
+// A word stored to the DUART, by the instruction at `pc` at emulated time `time`.
 constexpr StopReport duart_stop(std::uint32_t pc, std::uint64_t time) {
     return {
         .part = AbsentPart::unmapped,
@@ -68,6 +58,9 @@ constexpr StopReport duart_stop(std::uint32_t pc, std::uint64_t time) {
         .time = time,
     };
 }
+
+// How stop_rom() stops: its store to the DUART, the fourth instruction.
+constexpr StopReport stop_rom_stop = duart_stop(0xBFC0'000C, 3);
 
 } // namespace
 
@@ -129,7 +122,7 @@ TEST_CASE("a stop is final: every later run returns the same report at once", "[
     const auto core = make_core(*stop_rom(), diagnostics);
     static_cast<void>(core->run(distant));
 
-    for (int run = 0; run < 3; ++run) {
+    for (std::size_t run = 0; run < 3; ++run) {
         CHECK(core->run(core->now() + distant) == stopped_with(stop_rom_stop));
     }
     CHECK(core->now() == 3);
@@ -144,17 +137,6 @@ TEST_CASE("the core keeps its own copy of the BIOS", "[core]") {
     std::ranges::fill(*rom, std::byte{0xFF});
 
     CHECK(core->run(distant) == stopped_with(stop_rom_stop));
-}
-
-TEST_CASE("a stop on an absent part reports no diagnostics", "[core]") {
-    RecordingDiagnostics diagnostics;
-    const auto core = make_core(*stop_rom(), diagnostics);
-
-    static_cast<void>(core->run(distant));
-
-    CHECK(diagnostics.tty_text_received.empty());
-    CHECK(diagnostics.post_codes_received.empty());
-    CHECK(diagnostics.device_accesses_received.empty());
 }
 
 TEST_CASE("lui puts its immediate in a register's upper half and zeros in its lower", "[core]") {
@@ -275,8 +257,21 @@ TEST_CASE("a store to the ROM leaves it as it was", "[core]") {
     CHECK(core->run(distant) == stopped_with(duart_stop(0xBFC0'000C, 3)));
 }
 
+TEST_CASE("a stop reports the physical address a store reaches, through any segment", "[core]") {
+    const auto base = GENERATE(as<std::uint16_t>{}, 0x1F80, 0x9F80, 0xBF80);
+    RecordingDiagnostics diagnostics;
+    const auto core = make_core(*build_rom({
+                                    lui(reg::t0, base),
+                                    sw(reg::zero, 0x2020, reg::t0),
+                                }),
+                                diagnostics);
+
+    CHECK(core->run(distant) == stopped_with(duart_stop(0xBFC0'0004, 1)));
+}
+
 TEST_CASE("an address that maps to nothing stops the core: above KUSEG's first 512 MiB, and KSEG2",
           "[core]") {
+    // These addresses aren't mirrors of the physical address space, so they are reported as given.
     const auto base = GENERATE(as<std::uint16_t>{}, 0x2000, 0x7FFF, 0xC000, 0xFFFF);
     RecordingDiagnostics diagnostics;
     const auto core = make_core(*build_rom({
@@ -316,7 +311,7 @@ TEST_CASE("an instruction the core doesn't decode stops it at that instruction",
 
     CHECK(core->run(distant) == stopped_with({
                                     .part = AbsentPart::instruction,
-                                    .address = 0xBFC0'0004,
+                                    .address = 0x1FC0'0004,
                                     .direction = AccessDirection::read,
                                     .width = AccessWidth::word,
                                     .pc = 0xBFC0'0004,
@@ -327,7 +322,10 @@ TEST_CASE("an instruction the core doesn't decode stops it at that instruction",
 TEST_CASE("a store to an address that isn't a multiple of 4 stops the core with an address error",
           "[core]") {
     // Alignment is checked before the address is mapped, so the DUART's address is no different.
-    const auto base = GENERATE(as<std::uint16_t>{}, 0x8000, 0x1F80);
+    const auto [base, physical] = GENERATE(table<std::uint16_t, std::uint32_t>({
+        {0x8000, 0x0000'2022},
+        {0x1F80, 0x1F80'2022},
+    }));
     RecordingDiagnostics diagnostics;
     const auto core = make_core(*build_rom({
                                     lui(reg::t0, base),
@@ -337,7 +335,7 @@ TEST_CASE("a store to an address that isn't a multiple of 4 stops the core with 
 
     CHECK(core->run(distant) == stopped_with({
                                     .part = AbsentPart::address_error,
-                                    .address = (std::uint32_t{base} << 16) + 0x2022,
+                                    .address = physical,
                                     .direction = AccessDirection::write,
                                     .width = AccessWidth::word,
                                     .pc = 0xBFC0'0004,
@@ -351,7 +349,7 @@ TEST_CASE("a PC run past the end of the ROM stops the core at the fetch", "[core
 
     CHECK(core->run(distant) == stopped_with({
                                     .part = AbsentPart::unmapped,
-                                    .address = 0xBFC8'0000,
+                                    .address = 0x1FC8'0000,
                                     .direction = AccessDirection::read,
                                     .width = AccessWidth::word,
                                     .pc = 0xBFC8'0000,

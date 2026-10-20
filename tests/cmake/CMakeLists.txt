@@ -52,9 +52,12 @@ function(coldboot_add_spdx_test name)
     if(DEFINED arg_FAILS_WITH)
         set_tests_properties("${test_name}" PROPERTIES PASS_REGULAR_EXPRESSION "${arg_FAILS_WITH}")
     endif()
+    if(NOT Git_FOUND)
+        set_tests_properties("${test_name}" PROPERTIES DISABLED TRUE)
+    endif()
 endfunction()
 
-find_package(Git REQUIRED)
+find_package(Git)
 coldboot_add_spdx_test("the SPDX check passes when each source and build file begins with its line")
 coldboot_add_spdx_test("the SPDX check fails on a C++ header without its line first, naming it"
     BAD include/thing.hpp

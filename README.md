@@ -6,7 +6,7 @@ UEFI firmware starts it from a USB drive, and it runs PS1 games with no operatin
 It is at an early stage. Today it holds the core library, `coldboot::core`, whose core runs a BIOS
 from the reset vector until it meets a part of the PS1 it doesn't build, then stops for good and
 reports what it touched, where, by which instruction and when. Its CPU decodes SLL, LUI, ORI, ADDIU
-and SW so far, and its bus maps the BIOS ROM and 2 MB of RAM.
+and SW so far, and its bus maps the BIOS ROM and 2 MiB of RAM.
 
 ## Requirements
 

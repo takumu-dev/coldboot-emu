@@ -19,11 +19,21 @@ namespace coldboot::detail {
 /// The size of RAM, 2 MiB.
 inline constexpr std::size_t ram_size = 2'097'152;
 
-/// The memory map: the BIOS ROM and RAM, at the addresses psx-spx's "Memory Map" gives them.
+/// The address in the physical address space that a guest's address reaches.
 ///
-/// KUSEG's first 512 MiB, KSEG0 and KSEG1 each mirror the physical address space, in which RAM
-/// starts at 0 and the ROM at 1FC00000h. Every other address maps to nothing, and an access to it
-/// is absent.
+/// KUSEG's first 512 MiB, KSEG0 and KSEG1 each mirror the physical address space. Any other
+/// address, in KSEG2 or the rest of KUSEG, has no physical address: it is returned as it is, and
+/// maps to nothing.
+///
+/// \param address The guest's address.
+/// \return The physical address, or `address` itself when it has none.
+[[nodiscard]] std::uint32_t physical_address(std::uint32_t address);
+
+/// The memory map: the BIOS ROM and RAM, at the physical addresses psx-spx's "Memory Map" gives
+/// them.
+///
+/// RAM starts at 0 and the ROM at 1FC00000h. Every other address maps to nothing, and an access to
+/// it is absent.
 class Bus {
   public:
     /// Creates the memory map at power-on, with RAM zeroed.

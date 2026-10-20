@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <span>
 
-/// The ColdbootEmu project.
+/// coldboot-emu, the PS1 emulator.
 namespace coldboot {
 
 /// The text of a string literal, without its terminating null.

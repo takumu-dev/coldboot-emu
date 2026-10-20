@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "as_string.hpp"
 #include <coldboot/core/run_result.hpp>
 #include <coldboot/core/stop_report.hpp>
 
@@ -23,9 +24,7 @@ template <> struct Catch::StringMaker<coldboot::StopReport> {
     /// \param report The report.
     /// \return Its line.
     static std::string convert(const coldboot::StopReport& report) {
-        const auto line = coldboot::stop_line(report);
-        const auto text = line.text();
-        return {text.begin(), text.end()};
+        return coldboot::test::as_string(coldboot::stop_line(report).text());
     }
 };
 

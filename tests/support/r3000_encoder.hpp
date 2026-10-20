@@ -70,45 +70,46 @@ using enum Gpr;
 
 namespace detail {
 
-/// An I-type instruction: an opcode, two registers and a 16-bit immediate.
+/// An I-type instruction: an opcode, two registers and a 16-bit immediate, in the R3000 manual's
+/// fields.
 ///
-/// \param opcode The primary opcode, bits 26 to 31.
+/// \param op The opcode, bits 26 to 31.
 /// \param rs The register in bits 21 to 25.
 /// \param rt The register in bits 16 to 20.
 /// \param immediate The immediate, bits 0 to 15.
 /// \return The instruction's word.
-[[nodiscard]] constexpr std::uint32_t i_type(std::uint32_t opcode, Gpr rs, Gpr rt,
+[[nodiscard]] constexpr std::uint32_t i_type(std::uint32_t op, Gpr rs, Gpr rt,
                                              std::uint16_t immediate) {
-    return opcode << 26 | std::uint32_t{std::to_underlying(rs)} << 21 |
+    return op << 26 | std::uint32_t{std::to_underlying(rs)} << 21 |
            std::uint32_t{std::to_underlying(rt)} << 16 | immediate;
 }
 
-/// An R-type instruction with SPECIAL's opcode, 0.
+/// An R-type instruction with SPECIAL's opcode, 0, in the R3000 manual's fields.
 ///
 /// \param rs The register in bits 21 to 25.
 /// \param rt The register in bits 16 to 20.
 /// \param rd The register in bits 11 to 15.
-/// \param shift The shift amount, bits 6 to 10, from 0 to 31.
-/// \param function The function, bits 0 to 5.
+/// \param shamt The shift amount, bits 6 to 10, from 0 to 31.
+/// \param funct The function, bits 0 to 5.
 /// \return The instruction's word.
-[[nodiscard]] constexpr std::uint32_t special(Gpr rs, Gpr rt, Gpr rd, std::uint32_t shift,
-                                              std::uint32_t function) {
-    COLDBOOT_ASSERT(shift < 32, "a shift amount is 0 to 31");
+[[nodiscard]] constexpr std::uint32_t special(Gpr rs, Gpr rt, Gpr rd, std::uint32_t shamt,
+                                              std::uint32_t funct) {
+    COLDBOOT_ASSERT(shamt < 32, "a shift amount is 0 to 31");
     return std::uint32_t{std::to_underlying(rs)} << 21 |
            std::uint32_t{std::to_underlying(rt)} << 16 |
-           std::uint32_t{std::to_underlying(rd)} << 11 | shift << 6 | function;
+           std::uint32_t{std::to_underlying(rd)} << 11 | shamt << 6 | funct;
 }
 
 } // namespace detail
 
-/// `sll rd, rt, shift`: shifts `rt` left by `shift` bits into `rd`.
+/// `sll rd, rt, shamt`: shifts `rt` left by `shamt` bits into `rd`.
 ///
 /// \param rd The destination.
 /// \param rt The register shifted.
-/// \param shift The shift amount, from 0 to 31.
+/// \param shamt The shift amount, from 0 to 31.
 /// \return The instruction's word.
-[[nodiscard]] constexpr std::uint32_t sll(Gpr rd, Gpr rt, std::uint32_t shift) {
-    return detail::special(reg::zero, rt, rd, shift, 0x00);
+[[nodiscard]] constexpr std::uint32_t sll(Gpr rd, Gpr rt, std::uint32_t shamt) {
+    return detail::special(reg::zero, rt, rd, shamt, 0x00);
 }
 
 /// `nop`: `sll zero, zero, 0`, the all-zero word.

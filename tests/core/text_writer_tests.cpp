@@ -2,20 +2,15 @@
 
 #include <coldboot/core/text_writer.hpp>
 
+#include "as_string.hpp"
 #include <coldboot/core/literal.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdint>
 #include <limits>
-#include <span>
-#include <string>
 
-namespace {
-
-std::string as_string(std::span<const char> text) { return {text.begin(), text.end()}; }
-
-} // namespace
+using coldboot::test::as_string;
 
 TEST_CASE("a text writer starts empty", "[core]") {
     const coldboot::TextWriter<8> writer;

@@ -17,11 +17,10 @@
 
 // NOLINTNEXTLINE(bugprone-exception-escape): an exception fails the build step, as it should
 int main() {
-    for (const auto& test_rom : coldboot::test::test_roms) {
-        const auto rom = test_rom.build();
+    for (const auto& test_rom : coldboot::test::test_roms()) {
         const std::string file_name{test_rom.file_name};
         std::ofstream file{file_name, std::ios::binary};
-        std::ranges::transform(*rom, std::ostreambuf_iterator<char>{file},
+        std::ranges::transform(*test_rom.rom, std::ostreambuf_iterator<char>{file},
                                [](std::byte byte) { return static_cast<char>(byte); });
         file.close();
         if (!file) {

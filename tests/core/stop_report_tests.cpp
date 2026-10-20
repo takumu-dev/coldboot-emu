@@ -2,13 +2,13 @@
 
 #include <coldboot/core/stop_report.hpp>
 
+#include "as_string.hpp"
 #include <coldboot/core/access.hpp>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdint>
 #include <limits>
-#include <span>
 #include <string>
 
 namespace {
@@ -19,9 +19,7 @@ using coldboot::AccessWidth;
 using coldboot::StopReport;
 
 std::string line_of(const StopReport& report) {
-    const auto line = coldboot::stop_line(report);
-    const std::span<const char> text = line.text();
-    return {text.begin(), text.end()};
+    return coldboot::test::as_string(coldboot::stop_line(report).text());
 }
 
 } // namespace
@@ -75,7 +73,7 @@ TEST_CASE("a stop's line names an instruction the core doesn't decode", "[core]"
 TEST_CASE("a stop's line names an address error", "[core]") {
     const StopReport report{
         .part = AbsentPart::address_error,
-        .address = 0x8000'0002,
+        .address = 0x0000'2022,
         .direction = AccessDirection::write,
         .width = AccessWidth::word,
         .pc = 0xBFC0'0008,
@@ -83,7 +81,7 @@ TEST_CASE("a stop's line names an address error", "[core]") {
     };
 
     CHECK(line_of(report) ==
-          "stop: address error at 80000002h, 32-bit write, PC BFC00008h, emulated time 2");
+          "stop: address error at 00002022h, 32-bit write, PC BFC00008h, emulated time 2");
 }
 
 TEST_CASE("a stop's line holds the longest report", "[core]") {

@@ -8,7 +8,7 @@
 
 #include <memory>
 
-void break_precondition() {
+void coldboot::test::break_precondition() {
     coldboot::test::RecordingDiagnostics diagnostics;
     const auto rom = coldboot::test::build_rom({});
     const auto core = std::make_unique<coldboot::Core>(
